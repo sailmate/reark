@@ -38,6 +38,7 @@ import android.support.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -59,6 +60,7 @@ import rx.subjects.PublishSubject;
 import rx.subjects.Subject;
 
 import static io.reark.reark.utils.Preconditions.checkNotNull;
+import static io.reark.reark.utils.Preconditions.get;
 
 /**
  * ContentProviderStoreCoreBase implements an Observable based item store that uses a content provider as
@@ -98,8 +100,6 @@ public abstract class ContentProviderStoreCoreBase<U> {
     private final int groupMaxSize;
 
     private final int groupingTimeout;
-
-    private int nextOperationIndex = 0;
 
     protected ContentProviderStoreCoreBase(@NonNull final ContentResolver contentResolver) {
         this(contentResolver, DEFAULT_GROUPING_TIMEOUT_MS, DEFAULT_GROUP_MAX_SIZE);
@@ -302,7 +302,7 @@ public abstract class ContentProviderStoreCoreBase<U> {
 
     @NonNull
     private Single<Boolean> createModifyingOperation(@NonNull final Func1<Integer, CoreValue<U>> valueFunc) {
-        int index = ++nextOperationIndex;
+        int index = createIndex();
 
         completionNotifiers.put(index, PublishSubject.create());
         operationSubject.onNext(valueFunc.call(index));
@@ -312,18 +312,19 @@ public abstract class ContentProviderStoreCoreBase<U> {
                 .toSingle();
     }
 
+    private static int createIndex() {
+        return UUID.randomUUID().hashCode();
+    }
+
     @NonNull
     protected Observable<List<U>> getAllOnce(@NonNull final Uri uri) {
-        checkNotNull(uri);
-
-        return Observable.just(uri)
-                .observeOn(Schedulers.io())
-                .map(this::queryList);
+        return Observable.fromCallable(() -> queryList(uri))
+                .subscribeOn(Schedulers.io());
     }
 
     @NonNull
     protected Observable<U> getOnce(@NonNull final Uri uri) {
-        return getAllOnce(Preconditions.get(uri))
+        return getAllOnce(get(uri))
                 .filter(list -> !list.isEmpty())
                 .doOnNext(list -> {
                     if (list.size() > 1) {
