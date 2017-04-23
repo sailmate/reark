@@ -99,7 +99,7 @@ public abstract class FetcherBase<T> implements Fetcher<T> {
                 int statusCode = httpException.code();
                 errorRequest(uri, statusCode, httpException.getMessage());
             } else {
-                Log.e(TAG, "The error was not a RetroFitError");
+                Log.w(TAG, "The error was not a RetrofitError", throwable);
                 errorRequest(uri, NO_ERROR_CODE, null);
             }
         };
