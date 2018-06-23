@@ -193,7 +193,7 @@ public abstract class ContentProviderStoreCoreBase<U> {
         }
 
         return valueObservable
-                .subscribeOn(Schedulers.io())
+                .subscribeOn(Schedulers.computation())
                 .onErrorReturn(__ -> value.noOperation())
                 .doOnNext(this::releaseIfNoOp)
                 .filter(CoreOperation::isValid);
